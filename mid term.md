@@ -77,6 +77,94 @@ It provides a simple yet effective solution for maintaining system logs without 
 The project demonstrates practical knowledge of Linux commands, file handling, loops, conditions, and cron scheduling — fulfilling all midterm project requirements.
 
 Script code_
+#!/bin/bash
+# =====================================================
+# Daily User Log Archiver
+# Author: Kanishka Diwakar
+# Description:
+#   This script logs system information daily, 
+#   rotates logs older than 7 days, 
+#   archives weekly logs, 
+#   and can be scheduled with cron.
+# =====================================================
+
+# --- 1. Set up directories ---
+LOG_DIR=~/daily_logs
+ARCHIVE_DIR=$LOG_DIR/archive
+mkdir -p "$LOG_DIR" "$ARCHIVE_DIR"
+
+# --- 2. Log file name with date ---
+LOGFILE="$LOG_DIR/log_$(date +%Y-%m-%d).txt"
+
+# --- 3. Record basic system info ---
+echo "===================================" >> "$LOGFILE"
+echo "Date: $(date)" >> "$LOGFILE"
+echo "User: $(whoami)" >> "$LOGFILE"
+echo "Uptime: $(uptime)" >> "$LOGFILE"
+echo "-----------------------------------" >> "$LOGFILE"
+
+# --- 4. Record top 5 CPU processes ---
+echo "Top 5 Processes (by CPU usage):" >> "$LOGFILE"
+ps -eo pid,comm,%mem,%cpu --sort=-%cpu | head -n 6 >> "$LOGFILE"
+echo "-----------------------------------" >> "$LOGFILE"
+
+# --- 5. Record disk usage ---
+echo "Disk Usage:" >> "$LOGFILE"
+df -h >> "$LOGFILE"
+echo "===================================" >> "$LOGFILE"
+echo "Log saved to: $LOGFILE"
+echo ""
+
+# --- 6. Move old logs to archive (older than 7 days) ---
+echo "Archiving logs older than 7 days..."
+find "$LOG_DIR" -name "log_*.txt" -mtime +7 -exec mv {} "$ARCHIVE_DIR" \;
+echo "Old logs moved to $ARCHIVE_DIR"
+echo ""
+
+# --- 7. Create weekly archive (Sunday) ---
+DAY_OF_WEEK=$(date +%u)  # Sunday = 7
+if [ "$DAY_OF_WEEK" -eq 7 ]; then
+    TARFILE="$ARCHIVE_DIR/weeklylogs_$(date +%Y-%m-%d).tar.gz"
+    tar -czf "$TARFILE" -C "$ARCHIVE_DIR" .
+    echo "Weekly logs archived as: $TARFILE"
+    echo ""
+fi
+
+# --- 8. Menu for manual actions (optional) ---
+while true; do
+    echo "========== Daily Log Menu =========="
+    echo "1. View latest log"
+    echo "2. Archive old logs now"
+    echo "3. Clean all old logs"
+    echo "4. Exit"
+    read -p "Choose an option [1-4]: " choice
+
+    case $choice in
+        1)
+          echo "----- Latest Log -----"
+            cat "$LOGFILE"
+            ;;
+        2)
+            echo "Manually archiving logs..."
+            tar -czf "$ARCHIVE_DIR/manual_archive_$(date +%Y-%m-%d).tar.gz" "$LOG_DIR"/log_*.txt
+            echo "Manual archive created!"
+            ;;
+        3)
+            echo "Cleaning old logs..."
+            find "$ARCHIVE_DIR" -type f -mtime +30 -delete
+            echo "Old archives deleted!"
+            ;;
+        4)
+            echo "Exiting..."
+            break
+            ;;
+        *)
+            echo "Invalid option, try again."
+            ;;
+    esac
+done
+
+exit 0
 ![alt text](script1-2.png)
 ![alt text](script2.png)
 
